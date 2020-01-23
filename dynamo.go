@@ -26,7 +26,7 @@ func (d *Dynamo) newSess() *dynamodb.DynamoDB {
 	})
 }
 
-func (d *Dynamo) newQueryInput(tablename string, colume string, index string, key string, operator string) *dynamodb.QueryInput {
+func (d *Dynamo) newQueryInput(colume string, index string, key string, operator string) *dynamodb.QueryInput {
 	return &dynamodb.QueryInput{
 		KeyConditions: map[string]*dynamodb.Condition{
 			colume: {
@@ -34,13 +34,13 @@ func (d *Dynamo) newQueryInput(tablename string, colume string, index string, ke
 				ComparisonOperator: &operator,
 			},
 		},
-		TableName: &tablename,
+		TableName: d.tablename,
 		IndexName: &index,
 	}
 }
 
-func (d *Dynamo) QueryTable(tablename string, colume string, index string, key string, operator string) []map[string]*dynamodb.AttributeValue {
-	input := d.newQueryInput(tablename, colume, index, key, operator)
+func (d *Dynamo) QueryTableWithIndex(colume string, index string, key string, operator string) []map[string]*dynamodb.AttributeValue {
+	input := d.newQueryInput(colume, index, key, operator)
 	sess := d.newSess()
 	result, err := sess.Query(input)
 	if err != nil {
@@ -49,6 +49,19 @@ func (d *Dynamo) QueryTable(tablename string, colume string, index string, key s
 	return result.Items
 }
 
-func (d Dynamo) GetItemWithIndex() {}
+func (d *Dynamo) newGetItemInput(colume string, key string) *dynamodb.GetItemInput {
+	return &dynamodb.GetItemInput{
+		TableName: d.tablename,
+		Key:       map[string]*dynamodb.AttributeValue{colume: {S: &key}},
+	}
+}
 
-func (d *Dynamo) GetItem() {}
+func (d *Dynamo) GetItem(colume string, key string) *dynamodb.GetItemOutput {
+	input := d.newGetItemInput(colume, key)
+	sess := d.newSess()
+	result, err := sess.GetItem(input)
+	if err != nil {
+		fmt.Println(err)
+	}
+	return result
+}
