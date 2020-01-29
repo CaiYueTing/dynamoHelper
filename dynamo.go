@@ -39,14 +39,15 @@ func (d *Dynamo) newQueryInput(colume string, index string, key string, operator
 	}
 }
 
-func (d *Dynamo) QueryTableWithIndex(colume string, index string, key string, operator string) []map[string]*dynamodb.AttributeValue {
+func (d *Dynamo) QueryTableWithIndex(colume string, index string, key string, operator string) ([]map[string]*dynamodb.AttributeValue, error) {
 	input := d.newQueryInput(colume, index, key, operator)
 	sess := d.newSess()
 	result, err := sess.Query(input)
 	if err != nil {
 		fmt.Println(err)
+		return nil, err
 	}
-	return result.Items
+	return result.Items, nil
 }
 
 func (d *Dynamo) newGetItemInput(colume string, key string) *dynamodb.GetItemInput {
@@ -56,12 +57,26 @@ func (d *Dynamo) newGetItemInput(colume string, key string) *dynamodb.GetItemInp
 	}
 }
 
-func (d *Dynamo) GetItem(colume string, key string) *dynamodb.GetItemOutput {
+func (d *Dynamo) GetItem(colume string, key string) (*dynamodb.GetItemOutput, error) {
 	input := d.newGetItemInput(colume, key)
 	sess := d.newSess()
 	result, err := sess.GetItem(input)
 	if err != nil {
 		fmt.Println(err)
+		return nil, err
 	}
-	return result
+	return result, nil
+}
+
+func (d *Dynamo) GetTableSize(table string) (int64, error) {
+	input := dynamodb.DescribeTableInput{
+		TableName: d.tablename,
+	}
+	sess := d.newSess()
+	result, err := sess.DescribeTable(&input)
+	if err != nil {
+		fmt.Println(err)
+		return 0, err
+	}
+	return *result.Table.TableSizeBytes, nil
 }
