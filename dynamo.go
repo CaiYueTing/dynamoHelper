@@ -69,7 +69,7 @@ func (d *Dynamo) GetItem(colume string, key string) (*dynamodb.GetItemOutput, er
 	return result, nil
 }
 
-func (d *Dynamo) GetTableSize(table string) (int64, error) {
+func (d *Dynamo) GetTableSize() (int64, error) {
 	input := dynamodb.DescribeTableInput{
 		TableName: d.tablename,
 	}
@@ -82,12 +82,12 @@ func (d *Dynamo) GetTableSize(table string) (int64, error) {
 	return *result.Table.TableSizeBytes, nil
 }
 
-func (d *Dynamo) newScanInput(totalSeg int64, key string) []*dynamodb.ScanInput {
+func (d *Dynamo) newScanInput(totalSeg int64, colume string, key string) []*dynamodb.ScanInput {
 	inputs := make([]*dynamodb.ScanInput, totalSeg)
 	for i, _ := range inputs {
 		inputs[i] = &dynamodb.ScanInput{
 			ScanFilter: map[string]*dynamodb.Condition{
-				*d.tablename: {
+				colume: {
 					ComparisonOperator: aws.String("CONTAINS"),
 					AttributeValueList: []*dynamodb.AttributeValue{{S: &key}},
 				},
@@ -100,25 +100,24 @@ func (d *Dynamo) newScanInput(totalSeg int64, key string) []*dynamodb.ScanInput 
 	return inputs
 }
 
-func (d *Dynamo) ScanTable(seg int64, key string) []map[string]*dynamodb.AttributeValue {
-	inputs := d.newScanInput(seg, key)
-	sess := d.newSess()
+func (d *Dynamo) ScanTable(seg int64, colume string, key string) []map[string]*dynamodb.AttributeValue {
+	inputs := d.newScanInput(seg, colume, key)
 	results := []map[string]*dynamodb.AttributeValue{}
-	length := len(inputs)
-	ch := make(chan *dynamodb.ScanOutput, length)
-	for i := 0; i < length; i++ {
+	ch := make(chan dynamodb.ScanOutput, seg)
+	for i := 0; i < int(seg); i++ {
 		go func(i int) {
+			sess := d.newSess()
 			result, err := sess.Scan(inputs[i])
-			checkerr(err)
+			fmt.Println("ch :", i, ":", err)
 			defer func() {
 				if err := recover(); err != nil {
 					fmt.Println("recover:", err)
 				}
 			}()
-			ch <- result
+			ch <- *result
 		}(i)
 	}
-	for i := 0; i < length; i++ {
+	for i := 0; i < int(seg); i++ {
 		output := <-ch
 		results = append(results, output.Items...)
 	}
