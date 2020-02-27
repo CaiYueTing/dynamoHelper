@@ -108,12 +108,14 @@ func (d *Dynamo) ScanTable(seg int64, colume string, key string) []map[string]*d
 		go func(i int) {
 			sess := d.newSess()
 			result, err := sess.Scan(inputs[i])
-			fmt.Println("ch :", i, ":", err)
-			defer func() {
-				if err := recover(); err != nil {
-					fmt.Println("recover:", err)
-				}
-			}()
+			if err != nil {
+				fmt.Println(err)
+				defer func() {
+					if err := recover(); err != nil {
+						fmt.Println("recover:", err)
+					}
+				}()
+			}
 			ch <- *result
 		}(i)
 	}
